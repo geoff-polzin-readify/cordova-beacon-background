@@ -17,7 +17,7 @@
     </engines>
 
 	<!-- Load in the core background service -->
-	<dependency id="com.red_folder.phonegap.plugin.backgroundservice" url="https://github.com/Red-Folder/bgs-core.git"/>
+	<dependency id="com.red_folder.phonegap.plugin.backgroundservice" url="https://zihehuang@bitbucket.org/zihehuang/cordova-bgs-core.git"/>
 
     <!-- android -->
     <platform name="android">
