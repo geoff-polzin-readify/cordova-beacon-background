@@ -8,7 +8,7 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import com.red_folder.phonegap.plugin.backgroundservice.sample.MyService;
-import com.startapplabs.ionTheme1.MainActivity;
+import com.topl.Topl.MainActivity;
 import com.estimote.sdk.Beacon;
 import com.estimote.sdk.BeaconManager;
 import com.estimote.sdk.Region;
@@ -42,7 +42,7 @@ public class BeaconNotificationsManager {
                 myservice.onEnter();
                 for(Beacon beacon:list){
                     int[] oldMajorMinor = myservice.getMajorMinor();
-                    // TODO: if entered the same store and the timer is active, don't post to API server
+
                     if(oldMajorMinor[0]==beacon.getMajor() && oldMajorMinor[1]==beacon.getMinor() && myservice.getEnabled()){
                         Log.d(TAG, "onEnteredRegion: " + beacon.getMajor() + " " + beacon.getMinor());
                     }
