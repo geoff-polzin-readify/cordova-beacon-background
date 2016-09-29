@@ -37,6 +37,11 @@
         </config-file>
         
         <source-file src="src/android/MyService.java" target-dir="src/com/red_folder/phonegap/plugin/backgroundservice/sample" />
+        <source-file src="src/android/estimote/BeaconID.java" target-dir="src/com/red_folder/phonegap/plugin/backgroundservice/sample/estimote" />
+        <source-file src="src/android/estimote/BeaconNotificationsManager.java" target-dir="src/com/red_folder/phonegap/plugin/backgroundservice/sample/estimote" />
+        <source-file src="libs/android/estimote-sdk.aar" target-dir="libs" framework="true" />
+
+        <framework src="src/android/build-extras.gradle" custom="true" type="gradleReference" />
     </platform>
 	
 </plugin>
