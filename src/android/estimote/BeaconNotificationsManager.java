@@ -4,9 +4,11 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.support.v4.app.NotificationCompat;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
+import com.loopj.android.http.JsonHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
 import com.red_folder.phonegap.plugin.backgroundservice.sample.MyService;
 import com.red_folder.phonegap.plugin.backgroundservice.sample.estimote.APIClient;
 
@@ -16,6 +18,7 @@ import com.estimote.sdk.BeaconManager;
 import com.estimote.sdk.Region;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -29,6 +32,9 @@ import java.util.HashMap;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
+
+import cz.msebera.android.httpclient.Header;
+import cz.msebera.android.httpclient.entity.StringEntity;
 
 public class BeaconNotificationsManager {
 
@@ -82,10 +88,9 @@ public class BeaconNotificationsManager {
                 // start a 15 sec timer when exit region is triggered
                 MyService myservice = (MyService) context;
                 myservice.onExit();
-                myservice.setDoWorkStatus(false);
-                myservice.setEnabled(true);
-                myservice.setMilliseconds(15000);
-                myservice.setupTimerTask();
+                showNotification("onExited");
+                updateServer(null);
+
                 Log.d(TAG, "onExitedRegion: " + region.getIdentifier());
             }
         });
@@ -93,81 +98,44 @@ public class BeaconNotificationsManager {
 
     private void updateServer(String currentRegion) {
 
+
+        ArrayList<String> beacons = new ArrayList<>();
+
+        if(currentRegion != null) {
+            beacons.add(currentRegion);
+        }
+
+        JSONObject jsonParams = new JSONObject();
+
         try {
 
-            String[] beacons = {currentRegion};
-
-            RequestParams params = new RequestParams();
-            params.put("beaconIds", beacons);
+            jsonParams.put("beaconIds", new JSONArray(beacons));
+            Log.d(TAG, "BEACONS: " + jsonParams.toString());
+            StringEntity entity = new StringEntity(jsonParams.toString());
 
             APIClient.setBaseUrl(endpoint);
 
-            APIClient.put("/users/me/paymentBeacons", params, new JsonHttpResponseHandler() {
+            APIClient.put(context, "/users/me/paymentBeacons", entity, accessToken, new JsonHttpResponseHandler() {
                 @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                    // If the response is JSONObject instead of expected JSONArray
-                }
-
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONArray timeline) {
-                    // Pull out the first event on the public timeline
-                    JSONObject firstEvent = timeline.get(0);
-                    String tweetText = firstEvent.getString("text");
-
+                public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
                     // Do something with the response
-                    System.out.println(tweetText);
+                    Log.d(TAG, "Request success: " + res.toString());
                 }
+
+                @Override
+                public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
+                    // Do something with the response
+                    Log.d(TAG, "Request success: " + res.toString());
+                }
+
+                @Override
+                public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                    Log.d(TAG, "Failed request: " + errorResponse.toString());
+                }
+
             });
 
-
-
-        } catch(IOException ignored) {}
-
-    }
-
-
-    public static class InputStreamToStringExample {
-
-        public static void main(String[] args) throws IOException {
-
-            // intilize an InputStream
-            InputStream is =
-                    new ByteArrayInputStream("file content..blah blah".getBytes());
-
-            String result = getStringFromInputStream(is);
-
-            System.out.println(result);
-            System.out.println("Done");
-
-        }
-
-        // convert InputStream to String
-        private static String getStringFromInputStream(InputStream is) {
-
-            BufferedReader br = null;
-            StringBuilder sb = new StringBuilder();
-
-            String line;
-            try {
-
-                br = new BufferedReader(new InputStreamReader(is));
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                if (br != null) {
-                    try {
-                        br.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-            return sb.toString();
-        }
+        } catch (Exception e) {}
 
     }
 
@@ -204,7 +172,7 @@ public class BeaconNotificationsManager {
         PendingIntent resultPendingIntent = PendingIntent.getActivity(
                 context, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context)
+        NotificationCompat.Builder builder = (NotificationCompat.Builder) new NotificationCompat.Builder(context)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle("Beacon Notifications")
                 .setContentText(message)

@@ -32,25 +32,6 @@ public class MyService extends BackgroundService {
 	@Override
 	protected JSONObject doWork() {
 		JSONObject result = new JSONObject();
-		try {
-			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-			String now = df.format(new Date(System.currentTimeMillis()));
-
-			if(!getDoWorkStatus()){
-				result.put("Message", "skip");
-				setDoWorkStatus(true);
-				Log.d(TAG, "skip");
-			}else{
-				String msg = "OnExit " + getConfig().getString("HelloTo") + " - its currently " + now;
-				result.put("Message", msg);
-				Log.d(TAG, msg);
-				// cancel the timer after work is finished
-				setEnabled(false);
-				stopTimerTask();
-				restartTimer();
-			}
-
-		} catch (JSONException ignored) {}
 
 		return result;
 	}
@@ -94,7 +75,7 @@ public class MyService extends BackgroundService {
 
 				if(config.get(key) instanceof JSONArray) {
 
-					String[] strings = config.getJSONArray(key).join(",").split(",");
+					String[] strings = config.getJSONArray(key).join(",").replace("\"", "").split(",");
 					Set<String> stringSet = new HashSet<>(Arrays.asList(strings));
 
 					editor.putStringSet(this.getClass().getName() + '.' + key, stringSet);
@@ -117,7 +98,7 @@ public class MyService extends BackgroundService {
 	protected JSONObject initialiseLatestResult() {
 
 		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-
+		// sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false
 		if(sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false)) {
 			startMonitoring();
 		}
