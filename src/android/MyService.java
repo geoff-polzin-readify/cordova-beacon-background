@@ -2,8 +2,15 @@ package com.red_folder.phonegap.plugin.backgroundservice.sample;
 
 import java.lang.reflect.Array;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -17,9 +24,9 @@ import com.red_folder.phonegap.plugin.backgroundservice.sample.estimote.BeaconID
 import com.red_folder.phonegap.plugin.backgroundservice.sample.estimote.BeaconNotificationsManager;
 
 public class MyService extends BackgroundService {
-	
+
 	private final static String TAG = MyService.class.getSimpleName();
-	
+
 	private String mHelloTo = "World";
 
 	@Override
@@ -29,7 +36,7 @@ public class MyService extends BackgroundService {
 			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
 			String now = df.format(new Date(System.currentTimeMillis()));
 
-			if(getDoWorkStatus() == false){
+			if(!getDoWorkStatus()){
 				result.put("Message", "skip");
 				setDoWorkStatus(true);
 				Log.d(TAG, "skip");
@@ -43,73 +50,123 @@ public class MyService extends BackgroundService {
 				restartTimer();
 			}
 
-		} catch (JSONException e) {
-		}
-		
-		return result;	
-	}
+		} catch (JSONException ignored) {}
 
-	@Override
-	protected JSONObject getConfig() {
-		JSONObject result = new JSONObject();
-		
-		try {
-			SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-			String msg = sharedPrefs.getString(this.getClass().getName() + ".HelloTo", "blah");
-			result.put("HelloTo", msg);
-		} catch (JSONException e) {
-		}
-		
 		return result;
 	}
 
 	@Override
-	protected void setConfig(JSONObject config) {
-		try {
-			if (config.has("HelloTo")){
-//				this.mHelloTo = config.getString("HelloTo");
-				SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+	protected JSONObject getConfig() {
+		JSONObject configResult = new JSONObject();
 
-				SharedPreferences.Editor editor = sharedPrefs.edit();
-				editor.putString(this.getClass().getName() + ".HelloTo", config.getString("HelloTo"));
-				editor.commit(); // Very important
+		try {
+
+			SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+			String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
+			String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
+			Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
+
+
+			configResult.put("accessToken", accessToken);
+			configResult.put("APIendpoint", APIendpoint);
+			configResult.put("regions", new JSONArray(regions));
+
+		} catch (JSONException ignored) {}
+
+		return configResult;
+	}
+
+	@Override
+	protected void setConfig(JSONObject config) {
+
+		Iterator<String> keys = config.keys();
+
+		try {
+
+			SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+			SharedPreferences.Editor editor = sharedPrefs.edit();
+
+			while(keys.hasNext()) {
+
+				String key = keys.next();
+
+				if(config.get(key) instanceof JSONArray) {
+
+					String[] strings = config.getJSONArray(key).join(",").split(",");
+					Set<String> stringSet = new HashSet<>(Arrays.asList(strings));
+
+					editor.putStringSet(this.getClass().getName() + '.' + key, stringSet);
+				} else if (config.get(key) instanceof String){
+					editor.putString(this.getClass().getName() + '.' + key, config.getString(key));
+				}
 			}
+
+			editor.putBoolean(this.getClass().getName() + ".configSet", true);
+
+			editor.commit(); // Very important
+
 		} catch (JSONException e) {
+			Log.e(TAG, "BEACON CONFIG ERROR: " + e.getMessage());
 		}
-		
-	}     
+
+	}
 
 	@Override
 	protected JSONObject initialiseLatestResult() {
-		// TODO Auto-generated method stub
-		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
-		beaconNotificationsManager.addNotification(
-				new BeaconID("B9407F30-F5F8-466E-AFF9-25556B57FE6D", 5865, 32046),
-//				new BeaconID("B9407F30-F5F8-466E-AFF9-25556B57FE6D", null, null),
-				"Hello, world.",
-				"Goodbye, world.");
-		beaconNotificationsManager.startMonitoring();
-		Toast.makeText(this, "service start", Toast.LENGTH_SHORT).show();
+
+		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+		if(sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false)) {
+			startMonitoring();
+		}
 		return null;
+	}
+
+	public void startMonitoring() {
+
+		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+
+		String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
+		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
+		Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
+
+		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
+		beaconNotificationsManager.setToken(accessToken);
+		beaconNotificationsManager.setEndpoint(APIendpoint);
+
+		for(String region : regions) {
+			beaconNotificationsManager.addNotification(
+					new BeaconID(region, null, null),
+					"Hello, region " + region + ".",
+					"Goodbye, region " + region + ".");
+		}
+
+		beaconNotificationsManager.startMonitoring();
+
+		Toast.makeText(this, "service start", Toast.LENGTH_SHORT).show();
 	}
 
 	@Override
 	protected void onTimerEnabled() {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	protected void onTimerDisabled() {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	public int[] getMajorMinor() {
 		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-		int[] majorMinor = {sharedPrefs.getInt(this.getClass().getName() + ".Major", -1),
-				sharedPrefs.getInt(this.getClass().getName() + ".Minor", -1)};
-		return majorMinor;
+
+		return new int[]{
+				sharedPrefs.getInt(this.getClass().getName() + ".Major", -1),
+				sharedPrefs.getInt(this.getClass().getName() + ".Minor", -1)
+		};
 	}
 
 	public void setMajorMinor(int major, int minor) {

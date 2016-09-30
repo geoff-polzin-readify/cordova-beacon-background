@@ -7,16 +7,16 @@ import java.util.UUID;
 public class BeaconID {
 
     private UUID proximityUUID;
-    private int major;
-    private int minor;
+    private Integer major;
+    private Integer minor;
 
-    public BeaconID(UUID proximityUUID, int major, int minor) {
+    public BeaconID(UUID proximityUUID, Integer major, Integer minor) {
         this.proximityUUID = proximityUUID;
         this.major = major;
         this.minor = minor;
     }
 
-    public BeaconID(String UUIDString, int major, int minor) {
+    public BeaconID(String UUIDString, Integer major, Integer minor) {
         this(UUID.fromString(UUIDString), major, minor);
     }
 
@@ -24,11 +24,11 @@ public class BeaconID {
         return proximityUUID;
     }
 
-    public int getMajor() {
+    public Integer getMajor() {
         return major;
     }
 
-    public int getMinor() {
+    public Integer getMinor() {
         return minor;
     }
 
