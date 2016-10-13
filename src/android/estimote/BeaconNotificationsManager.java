@@ -74,7 +74,7 @@ public class BeaconNotificationsManager {
                         Log.d(TAG, "onEnteredRegion: " + beacon.getMajor() + " " + beacon.getMinor());
 
                         String message = "onEnteredRegion: " + beacon.getMajor()+ " " + beacon.getMinor();
-                        showNotification(message);
+                        //showNotification(message);
                         updateServer(beacon.getMajor() + "-" + beacon.getMinor());
                     }
                     myservice.setEnabled(false);
@@ -88,7 +88,7 @@ public class BeaconNotificationsManager {
                 // start a 15 sec timer when exit region is triggered
                 MyService myservice = (MyService) context;
                 myservice.onExit();
-                showNotification("onExited");
+                //showNotification("onExited");
                 updateServer(null);
 
                 Log.d(TAG, "onExitedRegion: " + region.getIdentifier());
