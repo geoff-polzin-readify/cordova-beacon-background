@@ -125,8 +125,6 @@ public class MyService extends BackgroundService {
 		}
 
 		beaconNotificationsManager.startMonitoring();
-
-		Toast.makeText(this, "service start", Toast.LENGTH_SHORT).show();
 	}
 
 	@Override
