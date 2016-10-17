@@ -28,6 +28,7 @@ public class MyService extends BackgroundService {
 	private final static String TAG = MyService.class.getSimpleName();
 
 	private String mHelloTo = "World";
+	private BeaconNotificationsManager beaconNotificationsManager;
 
 	@Override
 	protected JSONObject doWork() {
@@ -99,6 +100,11 @@ public class MyService extends BackgroundService {
 
 		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 		// sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false
+
+		if(beaconNotificationsManager == null) {
+			beaconNotificationsManager = new BeaconNotificationsManager(this);
+		}
+
 		if(sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false)) {
 			startMonitoring();
 		}
@@ -113,16 +119,17 @@ public class MyService extends BackgroundService {
 		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
 		Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
 
-		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
 		beaconNotificationsManager.setToken(accessToken);
 		beaconNotificationsManager.setEndpoint(APIendpoint);
 
+
+		ArrayList<BeaconID> beaconIDs = new ArrayList<>();
+
 		for(String region : regions) {
-			beaconNotificationsManager.addNotification(
-					new BeaconID(region, null, null),
-					"Hello, region " + region + ".",
-					"Goodbye, region " + region + ".");
+			beaconIDs.add(new BeaconID(region, null, null));
 		}
+
+		beaconNotificationsManager.setRegionsToMonitor(beaconIDs);
 
 		beaconNotificationsManager.startMonitoring();
 	}

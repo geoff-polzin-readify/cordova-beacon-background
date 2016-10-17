@@ -61,55 +61,41 @@ public class BeaconNotificationsManager {
             @Override
             public void onEnteredRegion(Region region, List<Beacon> list) {
                 MyService myservice = (MyService) context;
-                myservice.onEnter();
-                for(Beacon beacon:list){
-                    int[] oldMajorMinor = myservice.getMajorMinor();
 
-                    if(oldMajorMinor[0]==beacon.getMajor() && oldMajorMinor[1]==beacon.getMinor() && myservice.getEnabled()){
-                        Log.d(TAG, "onEnteredRegion: " + beacon.getMajor() + " " + beacon.getMinor());
-                    }
-                    // if the timer is not active, post to API server
-                    else {
-                        myservice.setMajorMinor(beacon.getMajor(), beacon.getMinor());
-                        Log.d(TAG, "onEnteredRegion: " + beacon.getMajor() + " " + beacon.getMinor());
+                Log.d(TAG, "onEnteredRegion: " + region.getIdentifier());
 
-                        String message = "onEnteredRegion: " + beacon.getMajor()+ " " + beacon.getMinor();
-                        //showNotification(message);
-                        updateServer(beacon.getMajor() + "-" + beacon.getMinor());
-                    }
-                    myservice.setEnabled(false);
-                    myservice.stopTimerTask();
-                    myservice.restartTimer();
+                for(Beacon b : list) {
+                    Log.d(TAG, "onEnteredRegion: Beacon " + b.getMajor() + " " + b.getMinor());
                 }
+                myservice.onEnter();
+                updateServer(list);
             }
 
             @Override
             public void onExitedRegion(Region region) {
-                // start a 15 sec timer when exit region is triggered
                 MyService myservice = (MyService) context;
                 myservice.onExit();
-                //showNotification("onExited");
-                updateServer(null);
+                updateServer(new ArrayList<Beacon>());
 
                 Log.d(TAG, "onExitedRegion: " + region.getIdentifier());
             }
         });
     }
 
-    private void updateServer(String currentRegion) {
+    private void updateServer(List<Beacon> beacons) {
 
+        ArrayList<String> beaconMajorMinors = new ArrayList<>();
 
-        ArrayList<String> beacons = new ArrayList<>();
-
-        if(currentRegion != null) {
-            beacons.add(currentRegion);
+        for(Beacon beacon : beacons) {
+            String label = beacon.getMajor() + "-" + beacon.getMinor();
+            beaconMajorMinors.add(label);
         }
 
         JSONObject jsonParams = new JSONObject();
 
         try {
 
-            jsonParams.put("beaconIds", new JSONArray(beacons));
+            jsonParams.put("beaconIds", new JSONArray(beaconMajorMinors));
             Log.d(TAG, "BEACONS: " + jsonParams.toString());
             StringEntity entity = new StringEntity(jsonParams.toString());
 
@@ -155,11 +141,21 @@ public class BeaconNotificationsManager {
         regionsToMonitor.add(region);
     }
 
+    public void setRegionsToMonitor(ArrayList<BeaconID> beaconIDs) {
+        regionsToMonitor = new ArrayList<>();
+
+        for(BeaconID beaconID : beaconIDs) {
+            Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
+            regionsToMonitor.add(region);
+        }
+    }
+
     public void startMonitoring() {
         beaconManager.setBackgroundScanPeriod(1000,1000);
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
             public void onServiceReady() {
+                Log.d(TAG, "SERVICE READY, MONITORING: " + regionsToMonitor.toString());
                 for (Region region : regionsToMonitor) {
                     beaconManager.startMonitoring(region);
                 }
