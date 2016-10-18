@@ -105,18 +105,24 @@ public class BeaconNotificationsManager {
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
                     // Do something with the response
-                    Log.d(TAG, "Request success: " + res.toString());
+                    if(res != null) {
+                        Log.d(TAG, "Request success: " + res.toString());
+                    }
                 }
 
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
                     // Do something with the response
-                    Log.d(TAG, "Request success: " + res.toString());
+                    if(res != null) {
+                        Log.d(TAG, "Request success: " + res.toString());
+                    }
                 }
 
                 @Override
                 public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                    Log.d(TAG, "Failed request: " + errorResponse.toString());
+                    if(errorResponse != null) {
+                        Log.d(TAG, "Failed request: " + errorResponse.toString());
+                    }
                 }
 
             });
