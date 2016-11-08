@@ -47,6 +47,8 @@ public class BeaconNotificationsManager {
     private HashMap<String, String> exitMessages = new HashMap<>();
     private String accessToken = "";
     private String endpoint = "";
+    private HashMap<Region, List<Beacon>> beacons = new HashMap<>();
+
 
     private Context context;
 
@@ -67,28 +69,33 @@ public class BeaconNotificationsManager {
                 for(Beacon b : list) {
                     Log.d(TAG, "onEnteredRegion: Beacon " + b.getMajor() + " " + b.getMinor());
                 }
+
+                beacons.put(region, list);
                 myservice.onEnter();
-                updateServer(list);
+                updateServer();
             }
 
             @Override
             public void onExitedRegion(Region region) {
                 MyService myservice = (MyService) context;
                 myservice.onExit();
-                updateServer(new ArrayList<Beacon>());
+
+                beacons.put(region, new ArrayList<Beacon>());
+                updateServer();
 
                 Log.d(TAG, "onExitedRegion: " + region.getIdentifier());
             }
         });
     }
 
-    private void updateServer(List<Beacon> beacons) {
+    private void updateServer() {
 
-        ArrayList<String> beaconMajorMinors = new ArrayList<>();
+        List<String> beaconMajorMinors =  new ArrayList<>();
 
-        for(Beacon beacon : beacons) {
-            String label = beacon.getMajor() + "-" + beacon.getMinor();
-            beaconMajorMinors.add(label);
+        for(List<Beacon> beaconList : beacons.values()) {
+            for(Beacon b : beaconList) {
+                beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
+            }
         }
 
         JSONObject jsonParams = new JSONObject();
@@ -105,24 +112,18 @@ public class BeaconNotificationsManager {
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
                     // Do something with the response
-                    if(res != null) {
-                        Log.d(TAG, "Request success: " + res.toString());
-                    }
+                    Log.d(TAG, "Request success: " + res);
                 }
 
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
                     // Do something with the response
-                    if(res != null) {
-                        Log.d(TAG, "Request success: " + res.toString());
-                    }
+                    Log.d(TAG, "Request success: " + res.toString());
                 }
 
                 @Override
                 public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                    if(errorResponse != null) {
-                        Log.d(TAG, "Failed request: " + errorResponse.toString());
-                    }
+                    Log.d(TAG, "Failed request: " + errorResponse);
                 }
 
             });
@@ -133,6 +134,7 @@ public class BeaconNotificationsManager {
 
     public void setToken(String accessToken) {
         this.accessToken = accessToken;
+        Log.d(TAG, "ACCESS TOKEN: actual<" + this.accessToken + ">");
     }
 
     public void setEndpoint(String endpoint) {
@@ -153,6 +155,7 @@ public class BeaconNotificationsManager {
         for(BeaconID beaconID : beaconIDs) {
             Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
             regionsToMonitor.add(region);
+            Log.d(TAG, "MONITORING REGION: " + region.toString());
         }
     }
 
