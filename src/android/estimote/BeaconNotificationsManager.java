@@ -42,12 +42,14 @@ public class BeaconNotificationsManager {
 
     private BeaconManager beaconManager;
 
-    private List<Region> regionsToMonitor = new ArrayList<>();
-    private HashMap<String, String> enterMessages = new HashMap<>();
-    private HashMap<String, String> exitMessages = new HashMap<>();
+    private List<Region> paymentRegionsToMonitor = new ArrayList<>();
+    private List<Region> pushRegionsToMonitor = new ArrayList<>();
+    private Map<String, String> enterMessages = new HashMap<>();
+    private Map<String, String> exitMessages = new HashMap<>();
     private String accessToken = "";
     private String endpoint = "";
-    private HashMap<Region, List<Beacon>> beacons = new HashMap<>();
+    private Map<Region, List<Beacon>> paymentBeacons = new HashMap<>();
+    private Map<Region, List<Beacon>> pushBeacons = new HashMap<>();
 
 
     private Context context;
@@ -70,9 +72,14 @@ public class BeaconNotificationsManager {
                     Log.d(TAG, "onEnteredRegion: Beacon " + b.getMajor() + " " + b.getMinor());
                 }
 
-                beacons.put(region, list);
+                if (paymentRegionsToMonitor.contains(region)) {
+                    paymentBeacons.put(region, list);
+                } else {
+                    pushBeacons.put(region, list);
+                }
+
                 myservice.onEnter();
-                updateServer();
+                updateServer(region);
             }
 
             @Override
@@ -80,81 +87,135 @@ public class BeaconNotificationsManager {
                 MyService myservice = (MyService) context;
                 myservice.onExit();
 
-                beacons.put(region, new ArrayList<Beacon>());
-                updateServer();
+                if (paymentRegionsToMonitor.contains(region)) {
+                    paymentBeacons.put(region, new ArrayList<Beacon>());
+                } else {
+                    pushBeacons.put(region, new ArrayList<Beacon>());
+                }
+
+                updateServer(region);
 
                 Log.d(TAG, "onExitedRegion: " + region.getIdentifier());
             }
         });
     }
 
-    private void updateServer() {
+    private void updateServer(Region region) {
 
         List<String> beaconMajorMinors =  new ArrayList<>();
 
-        for(List<Beacon> beaconList : beacons.values()) {
-            for(Beacon b : beaconList) {
-                beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
+
+        if(paymentRegionsToMonitor.contains(region)) {
+
+            for(List<Beacon> beaconList : paymentBeacons.values()) {
+                for(Beacon b : beaconList) {
+                    beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
+                }
             }
+
+
+            JSONObject jsonParams = new JSONObject();
+
+            try {
+
+                jsonParams.put("beaconIds", new JSONArray(beaconMajorMinors));
+                Log.d(TAG, "BEACONS: " + jsonParams.toString());
+                StringEntity entity = new StringEntity(jsonParams.toString());
+
+                APIClient.setBaseUrl(endpoint);
+
+                APIClient.put(context, "/users/me/paymentBeacons", entity, accessToken, new JsonHttpResponseHandler() {
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
+                        // Do something with the response
+                        Log.d(TAG, "Request success: " + res);
+                    }
+
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
+                        // Do something with the response
+                        Log.d(TAG, "Request success: " + res.toString());
+                    }
+
+                    @Override
+                    public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                        Log.d(TAG, "Failed request: " + errorResponse);
+                    }
+
+                });
+
+            } catch (Exception e) {}
+
+        } else {
+
+            Beacon[] beacons = pushBeacons.values().toArray();
+            Random rnd = new Random();
+            int i = rnd.nextInt(beacons.size());
+
+            Beacon b = beacons[i];
+            beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
+
+            JSONObject jsonParams = new JSONObject();
+
+            try {
+
+                jsonParams.put("beaconId", new JSONArray(beaconMajorMinors));
+                Log.d(TAG, "BEACON: " + jsonParams.toString());
+                StringEntity entity = new StringEntity(jsonParams.toString());
+
+                APIClient.setBaseUrl(endpoint);
+
+                APIClient.put(context, "/users/me/pushBeacons", entity, accessToken, new JsonHttpResponseHandler() {
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
+                        // Do something with the response
+                        Log.d(TAG, "Request success: " + res);
+                    }
+
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
+                        // Do something with the response
+                        Log.d(TAG, "Request success: " + res.toString());
+                    }
+
+                    @Override
+                    public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                        Log.d(TAG, "Failed request: " + errorResponse);
+                    }
+
+                });
+
+            } catch (Exception e) {}
+
         }
-
-        JSONObject jsonParams = new JSONObject();
-
-        try {
-
-            jsonParams.put("beaconIds", new JSONArray(beaconMajorMinors));
-            Log.d(TAG, "BEACONS: " + jsonParams.toString());
-            StringEntity entity = new StringEntity(jsonParams.toString());
-
-            APIClient.setBaseUrl(endpoint);
-
-            APIClient.put(context, "/users/me/paymentBeacons", entity, accessToken, new JsonHttpResponseHandler() {
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
-                    // Do something with the response
-                    Log.d(TAG, "Request success: " + res);
-                }
-
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
-                    // Do something with the response
-                    Log.d(TAG, "Request success: " + res.toString());
-                }
-
-                @Override
-                public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                    Log.d(TAG, "Failed request: " + errorResponse);
-                }
-
-            });
-
-        } catch (Exception e) {}
 
     }
 
     public void setToken(String accessToken) {
         this.accessToken = accessToken;
-        Log.d(TAG, "ACCESS TOKEN: actual<" + this.accessToken + ">");
     }
 
     public void setEndpoint(String endpoint) {
         this.endpoint = endpoint;
     }
 
-    public void addNotification(BeaconID beaconID, String enterMessage, String exitMessage) {
-//        Region region = beaconID.toBeaconRegion();
-        Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
-        enterMessages.put(region.getIdentifier(), enterMessage);
-        exitMessages.put(region.getIdentifier(), exitMessage);
-        regionsToMonitor.add(region);
-    }
 
-    public void setRegionsToMonitor(ArrayList<BeaconID> beaconIDs) {
-        regionsToMonitor = new ArrayList<>();
+    public void setPaymentRegionsToMonitor(ArrayList<BeaconID> beaconIDs) {
+        paymentRegionsToMonitor = new ArrayList<>();
 
         for(BeaconID beaconID : beaconIDs) {
             Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
-            regionsToMonitor.add(region);
+            paymentRegionsToMonitor.add(region);
+            Log.d(TAG, "MONITORING REGION: " + region.toString());
+        }
+    }
+
+    public void setPushRegionsToMonitor(ArrayList<BeaconID> beaconIDs) {
+        pushRegionsToMonitor = new ArrayList<>();
+
+        for(BeaconID beaconID : beaconIDs) {
+            Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
+            pushRegionsToMonitor.add(region);
             Log.d(TAG, "MONITORING REGION: " + region.toString());
         }
     }
@@ -164,29 +225,16 @@ public class BeaconNotificationsManager {
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
             public void onServiceReady() {
-                Log.d(TAG, "SERVICE READY, MONITORING: " + regionsToMonitor.toString());
-                for (Region region : regionsToMonitor) {
+                Log.d(TAG, "SERVICE READY, MONITORING: " + paymentRegionsToMonitor.toString());
+                for (Region region : paymentRegionsToMonitor) {
+                    beaconManager.startMonitoring(region);
+                }
+
+                for (Region region : pushRegionsToMonitor) {
                     beaconManager.startMonitoring(region);
                 }
             }
         });
     }
 
-    private void showNotification(String message) {
-        Intent resultIntent = new Intent(context, MainActivity.class);
-        PendingIntent resultPendingIntent = PendingIntent.getActivity(
-                context, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder builder = (NotificationCompat.Builder) new NotificationCompat.Builder(context)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Beacon Notifications")
-                .setContentText(message)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(resultPendingIntent);
-
-        NotificationManager notificationManager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(notificationID++, builder.build());
-    }
 }

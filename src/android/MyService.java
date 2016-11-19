@@ -27,8 +27,6 @@ public class MyService extends BackgroundService {
 
 	private final static String TAG = MyService.class.getSimpleName();
 
-	private String mHelloTo = "World";
-
 	@Override
 	protected JSONObject doWork() {
 		JSONObject result = new JSONObject();
@@ -46,12 +44,14 @@ public class MyService extends BackgroundService {
 
 			String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
 			String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
-			Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
+			Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", null);
+			Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", null);
 
 
 			configResult.put("accessToken", accessToken);
 			configResult.put("APIendpoint", APIendpoint);
-			configResult.put("regions", new JSONArray(regions));
+			configResult.put("paymentRegions", new JSONArray(paymentRegions));
+			configResult.put("pushRegions", new JSONArray(pushRegions));
 
 		} catch (JSONException ignored) {}
 
@@ -98,7 +98,7 @@ public class MyService extends BackgroundService {
 	protected JSONObject initialiseLatestResult() {
 
 		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
-		// sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false
+
 		if(sharedPrefs.getBoolean(this.getClass().getName()+".configSet", false)) {
 			startMonitoring();
 		}
@@ -110,19 +110,16 @@ public class MyService extends BackgroundService {
 		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
 		String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
-		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
-		Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
+		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://api.topl.me/api");
+		Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", null);
+		Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", null);
 
 		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
 		beaconNotificationsManager.setToken(accessToken);
 		beaconNotificationsManager.setEndpoint(APIendpoint);
 
-		for(String region : regions) {
-			beaconNotificationsManager.addNotification(
-					new BeaconID(region, null, null),
-					"Hello, region " + region + ".",
-					"Goodbye, region " + region + ".");
-		}
+		beaconNotificationsManager.setPaymentRegionsToMonitor(paymentRegions);
+		beaconNotificationsManager.setPushRegionsToMonitor(pushRegions);
 
 		beaconNotificationsManager.startMonitoring();
 	}
