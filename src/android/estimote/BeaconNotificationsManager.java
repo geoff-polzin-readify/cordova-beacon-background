@@ -149,44 +149,46 @@ public class BeaconNotificationsManager {
         } else {
 
             Beacon[] beacons = pushBeacons.values().toArray();
-            Random rnd = new Random();
-            int i = rnd.nextInt(beacons.size());
 
-            Beacon b = beacons[i];
-            beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
+            if(beacons.size > 0) {
+                Random rnd = new Random();
+                int i = rnd.nextInt(beacons.size());
 
-            JSONObject jsonParams = new JSONObject();
+                Beacon b = beacons[i];
+                beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
 
-            try {
+                JSONObject jsonParams = new JSONObject();
 
-                jsonParams.put("beaconId", new JSONArray(beaconMajorMinors));
-                Log.d(TAG, "BEACON: " + jsonParams.toString());
-                StringEntity entity = new StringEntity(jsonParams.toString());
+                try {
 
-                APIClient.setBaseUrl(endpoint);
+                    jsonParams.put("beaconId", new JSONArray(beaconMajorMinors));
+                    Log.d(TAG, "BEACON: " + jsonParams.toString());
+                    StringEntity entity = new StringEntity(jsonParams.toString());
 
-                APIClient.put(context, "/users/me/pushBeacons", entity, accessToken, new JsonHttpResponseHandler() {
-                    @Override
-                    public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
-                        // Do something with the response
-                        Log.d(TAG, "Request success: " + res);
-                    }
+                    APIClient.setBaseUrl(endpoint);
 
-                    @Override
-                    public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
-                        // Do something with the response
-                        Log.d(TAG, "Request success: " + res.toString());
-                    }
+                    APIClient.put(context, "/users/me/pushBeacons", entity, accessToken, new JsonHttpResponseHandler() {
+                        @Override
+                        public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
+                            // Do something with the response
+                            Log.d(TAG, "Request success: " + res);
+                        }
 
-                    @Override
-                    public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                        Log.d(TAG, "Failed request: " + errorResponse);
-                    }
+                        @Override
+                        public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
+                            // Do something with the response
+                            Log.d(TAG, "Request success: " + res.toString());
+                        }
 
-                });
+                        @Override
+                        public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                            Log.d(TAG, "Failed request: " + errorResponse);
+                        }
 
-            } catch (Exception e) {}
+                    });
 
+                } catch (Exception e) {}
+            }
         }
 
     }
