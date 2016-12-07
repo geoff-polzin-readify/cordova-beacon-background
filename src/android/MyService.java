@@ -118,8 +118,19 @@ public class MyService extends BackgroundService {
 		beaconNotificationsManager.setToken(accessToken);
 		beaconNotificationsManager.setEndpoint(APIendpoint);
 
-		beaconNotificationsManager.setPaymentRegionsToMonitor(paymentRegions);
-		beaconNotificationsManager.setPushRegionsToMonitor(pushRegions);
+		ArrayList<BeaconID> paymentRegionBeaconIDs = new ArrayList<>();
+		ArrayList<BeaconID> pushRegionBeaconIDs = new ArrayList<>();
+
+		for(String region : paymentRegions) {
+			paymentRegionBeaconIDs.add(new BeaconID(region, null, null));
+		}
+
+		for(String region : pushRegions) {
+			pushRegionBeaconIDs.add(new BeaconID(region, null, null));
+		}
+
+		beaconNotificationsManager.setPaymentRegionsToMonitor(paymentRegionBeaconIDs);
+		beaconNotificationsManager.setPushRegionsToMonitor(pushRegionBeaconIDs);
 
 		beaconNotificationsManager.startMonitoring();
 	}
