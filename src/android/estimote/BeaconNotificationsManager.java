@@ -28,6 +28,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Random;
 import java.util.HashMap;
 import java.util.List;
 
@@ -148,13 +150,15 @@ public class BeaconNotificationsManager {
 
         } else {
 
-            Beacon[] beacons = pushBeacons.values().toArray();
+            /* Get the beacons for this region, and pick one randomly */
+            List<Beacon> beacons = pushBeacons.get(region);
 
-            if(beacons.size > 0) {
+            if(beacons.size() > 0) {
+
                 Random rnd = new Random();
                 int i = rnd.nextInt(beacons.size());
 
-                Beacon b = beacons[i];
+                Beacon b = beacons.get(i);
                 beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
 
                 JSONObject jsonParams = new JSONObject();
