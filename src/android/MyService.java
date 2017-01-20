@@ -111,8 +111,8 @@ public class MyService extends BackgroundService {
 
 		String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
 		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://api.topl.me/api");
-		Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", new Set<>());
-		Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", new Set<>());
+		Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", new HashSet<>());
+		Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", new HashSet<>());
 
 		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
 		beaconNotificationsManager.setToken(accessToken);
