@@ -86,7 +86,7 @@ public class MyService extends BackgroundService {
 
 			editor.putBoolean(this.getClass().getName() + ".configSet", true);
 
-			editor.commit(); // Very important
+			editor.apply(); // Very important
 
 		} catch (JSONException e) {
 			Log.e(TAG, "BEACON CONFIG ERROR: " + e.getMessage());
@@ -111,8 +111,8 @@ public class MyService extends BackgroundService {
 
 		String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
 		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://api.topl.me/api");
-		Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", null);
-		Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", null);
+		Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", new Set<>());
+		Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", new Set<>());
 
 		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
 		beaconNotificationsManager.setToken(accessToken);
