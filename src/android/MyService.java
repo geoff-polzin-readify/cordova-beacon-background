@@ -27,30 +27,9 @@ public class MyService extends BackgroundService {
 
 	private final static String TAG = MyService.class.getSimpleName();
 
-	private String mHelloTo = "World";
-
 	@Override
 	protected JSONObject doWork() {
 		JSONObject result = new JSONObject();
-		try {
-			SimpleDateFormat df = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-			String now = df.format(new Date(System.currentTimeMillis()));
-
-			if(!getDoWorkStatus()){
-				result.put("Message", "skip");
-				setDoWorkStatus(true);
-				Log.d(TAG, "skip");
-			}else{
-				String msg = "OnExit " + getConfig().getString("HelloTo") + " - its currently " + now;
-				result.put("Message", msg);
-				Log.d(TAG, msg);
-				// cancel the timer after work is finished
-				setEnabled(false);
-				stopTimerTask();
-				restartTimer();
-			}
-
-		} catch (JSONException ignored) {}
 
 		return result;
 	}
@@ -65,12 +44,14 @@ public class MyService extends BackgroundService {
 
 			String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
 			String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
-			Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
+			Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", null);
+			Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", null);
 
 
 			configResult.put("accessToken", accessToken);
 			configResult.put("APIendpoint", APIendpoint);
-			configResult.put("regions", new JSONArray(regions));
+			configResult.put("paymentRegions", new JSONArray(paymentRegions));
+			configResult.put("pushRegions", new JSONArray(pushRegions));
 
 		} catch (JSONException ignored) {}
 
@@ -94,7 +75,7 @@ public class MyService extends BackgroundService {
 
 				if(config.get(key) instanceof JSONArray) {
 
-					String[] strings = config.getJSONArray(key).join(",").split(",");
+					String[] strings = config.getJSONArray(key).join(",").replace("\"", "").split(",");
 					Set<String> stringSet = new HashSet<>(Arrays.asList(strings));
 
 					editor.putStringSet(this.getClass().getName() + '.' + key, stringSet);
@@ -105,7 +86,7 @@ public class MyService extends BackgroundService {
 
 			editor.putBoolean(this.getClass().getName() + ".configSet", true);
 
-			editor.commit(); // Very important
+			editor.apply(); // Very important
 
 		} catch (JSONException e) {
 			Log.e(TAG, "BEACON CONFIG ERROR: " + e.getMessage());
@@ -129,23 +110,29 @@ public class MyService extends BackgroundService {
 		SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
 
 		String accessToken = sharedPrefs.getString(this.getClass().getName() + ".accessToken", "");
-		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://test-api.topl.me/api");
-		Set<String> regions = sharedPrefs.getStringSet(this.getClass().getName() + ".regions", null);
+		String APIendpoint = sharedPrefs.getString(this.getClass().getName() + ".APIendpoint", "https://api.topl.me/api");
+		Set<String> paymentRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".paymentRegions", new HashSet<String>());
+		Set<String> pushRegions = sharedPrefs.getStringSet(this.getClass().getName() + ".pushRegions", new HashSet<String>());
 
 		BeaconNotificationsManager beaconNotificationsManager = new BeaconNotificationsManager(this);
 		beaconNotificationsManager.setToken(accessToken);
 		beaconNotificationsManager.setEndpoint(APIendpoint);
 
-		for(String region : regions) {
-			beaconNotificationsManager.addNotification(
-					new BeaconID(region, null, null),
-					"Hello, region " + region + ".",
-					"Goodbye, region " + region + ".");
+		ArrayList<BeaconID> paymentRegionBeaconIDs = new ArrayList<>();
+		ArrayList<BeaconID> pushRegionBeaconIDs = new ArrayList<>();
+
+		for(String region : paymentRegions) {
+			paymentRegionBeaconIDs.add(new BeaconID(region, null, null));
 		}
 
-		beaconNotificationsManager.startMonitoring();
+		for(String region : pushRegions) {
+			pushRegionBeaconIDs.add(new BeaconID(region, null, null));
+		}
 
-		Toast.makeText(this, "service start", Toast.LENGTH_SHORT).show();
+		beaconNotificationsManager.setPaymentRegionsToMonitor(paymentRegionBeaconIDs);
+		beaconNotificationsManager.setPushRegionsToMonitor(pushRegionBeaconIDs);
+
+		beaconNotificationsManager.startMonitoring();
 	}
 
 	@Override
@@ -191,11 +178,7 @@ public class MyService extends BackgroundService {
 		editor.commit(); // Very important
 	}
 
-	public void onEnter(){
-		Toast.makeText(this, "region entered", Toast.LENGTH_SHORT).show();
-	}
+	public void onEnter(){}
 
-	public void onExit(){
-		Toast.makeText(this, "region exited", Toast.LENGTH_SHORT).show();
-	}
+	public void onExit(){}
 }

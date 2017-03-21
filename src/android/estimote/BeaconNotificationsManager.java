@@ -4,9 +4,11 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.support.v4.app.NotificationCompat;
+import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 
+import com.loopj.android.http.JsonHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
 import com.red_folder.phonegap.plugin.backgroundservice.sample.MyService;
 import com.red_folder.phonegap.plugin.backgroundservice.sample.estimote.APIClient;
 
@@ -16,6 +18,7 @@ import com.estimote.sdk.BeaconManager;
 import com.estimote.sdk.Region;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -25,10 +28,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.Random;
 import java.util.HashMap;
 import java.util.List;
 
 import javax.net.ssl.HttpsURLConnection;
+
+import cz.msebera.android.httpclient.Header;
+import cz.msebera.android.httpclient.entity.StringEntity;
 
 public class BeaconNotificationsManager {
 
@@ -36,11 +44,15 @@ public class BeaconNotificationsManager {
 
     private BeaconManager beaconManager;
 
-    private List<Region> regionsToMonitor = new ArrayList<>();
-    private HashMap<String, String> enterMessages = new HashMap<>();
-    private HashMap<String, String> exitMessages = new HashMap<>();
+    private List<Region> paymentRegionsToMonitor = new ArrayList<>();
+    private List<Region> pushRegionsToMonitor = new ArrayList<>();
+    private Map<String, String> enterMessages = new HashMap<>();
+    private Map<String, String> exitMessages = new HashMap<>();
     private String accessToken = "";
     private String endpoint = "";
+    private Map<Region, List<Beacon>> paymentBeacons = new HashMap<>();
+    private Map<Region, List<Beacon>> pushBeacons = new HashMap<>();
+
 
     private Context context;
 
@@ -55,116 +67,132 @@ public class BeaconNotificationsManager {
             @Override
             public void onEnteredRegion(Region region, List<Beacon> list) {
                 MyService myservice = (MyService) context;
-                myservice.onEnter();
-                for(Beacon beacon:list){
-                    int[] oldMajorMinor = myservice.getMajorMinor();
 
-                    if(oldMajorMinor[0]==beacon.getMajor() && oldMajorMinor[1]==beacon.getMinor() && myservice.getEnabled()){
-                        Log.d(TAG, "onEnteredRegion: " + beacon.getMajor() + " " + beacon.getMinor());
-                    }
-                    // if the timer is not active, post to API server
-                    else {
-                        myservice.setMajorMinor(beacon.getMajor(), beacon.getMinor());
-                        Log.d(TAG, "onEnteredRegion: " + beacon.getMajor() + " " + beacon.getMinor());
+                Log.d(TAG, "onEnteredRegion: " + region.getIdentifier());
 
-                        String message = "onEnteredRegion: " + beacon.getMajor()+ " " + beacon.getMinor();
-                        showNotification(message);
-                        updateServer(beacon.getMajor() + "-" + beacon.getMinor());
-                    }
-                    myservice.setEnabled(false);
-                    myservice.stopTimerTask();
-                    myservice.restartTimer();
+                for(Beacon b : list) {
+                    Log.d(TAG, "onEnteredRegion: Beacon " + b.getMajor() + " " + b.getMinor());
                 }
+
+                if (paymentRegionsToMonitor.contains(region)) {
+                    paymentBeacons.put(region, list);
+                } else {
+                    pushBeacons.put(region, list);
+                }
+
+                myservice.onEnter();
+                updateServer(region);
             }
 
             @Override
             public void onExitedRegion(Region region) {
-                // start a 15 sec timer when exit region is triggered
                 MyService myservice = (MyService) context;
                 myservice.onExit();
-                myservice.setDoWorkStatus(false);
-                myservice.setEnabled(true);
-                myservice.setMilliseconds(15000);
-                myservice.setupTimerTask();
+
+                if (paymentRegionsToMonitor.contains(region)) {
+                    paymentBeacons.put(region, new ArrayList<Beacon>());
+                } else {
+                    pushBeacons.put(region, new ArrayList<Beacon>());
+                }
+
+                updateServer(region);
+
                 Log.d(TAG, "onExitedRegion: " + region.getIdentifier());
             }
         });
     }
 
-    private void updateServer(String currentRegion) {
+    private void updateServer(Region region) {
 
-        try {
-
-            RequestParams params = new RequestParams();
-            params.put("beaconIds", [currentRegion]);
-
-            APIClient.setBaseUrl(endpoint);
-
-            APIClient.put("/users/me/paymentBeacons", params, new JsonHttpResponseHandler() {
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                    // If the response is JSONObject instead of expected JSONArray
-                }
-
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONArray timeline) {
-                    // Pull out the first event on the public timeline
-                    JSONObject firstEvent = timeline.get(0);
-                    String tweetText = firstEvent.getString("text");
-
-                    // Do something with the response
-                    System.out.println(tweetText);
-                }
-            });
+        List<String> beaconMajorMinors =  new ArrayList<>();
 
 
+        if(paymentRegionsToMonitor.contains(region)) {
 
-        } catch(IOException ignored) {}
-
-    }
-
-
-    public static class InputStreamToStringExample {
-
-        public static void main(String[] args) throws IOException {
-
-            // intilize an InputStream
-            InputStream is =
-                    new ByteArrayInputStream("file content..blah blah".getBytes());
-
-            String result = getStringFromInputStream(is);
-
-            System.out.println(result);
-            System.out.println("Done");
-
-        }
-
-        // convert InputStream to String
-        private static String getStringFromInputStream(InputStream is) {
-
-            BufferedReader br = null;
-            StringBuilder sb = new StringBuilder();
-
-            String line;
-            try {
-
-                br = new BufferedReader(new InputStreamReader(is));
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                if (br != null) {
-                    try {
-                        br.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+            for(List<Beacon> beaconList : paymentBeacons.values()) {
+                for(Beacon b : beaconList) {
+                    beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
                 }
             }
-            return sb.toString();
+
+
+            JSONObject jsonParams = new JSONObject();
+
+            try {
+
+                jsonParams.put("beaconIds", new JSONArray(beaconMajorMinors));
+                Log.d(TAG, "BEACONS: " + jsonParams.toString());
+                StringEntity entity = new StringEntity(jsonParams.toString());
+
+                APIClient.setBaseUrl(endpoint);
+
+                APIClient.put(context, "/users/me/paymentBeacons", entity, accessToken, new JsonHttpResponseHandler() {
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
+                        // Do something with the response
+                        Log.d(TAG, "Request success: " + res);
+                    }
+
+                    @Override
+                    public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
+                        // Do something with the response
+                        Log.d(TAG, "Request success: " + res.toString());
+                    }
+
+                    @Override
+                    public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                        Log.d(TAG, "Failed request: " + errorResponse);
+                    }
+
+                });
+
+            } catch (Exception e) {}
+
+        } else {
+
+            /* Get the beacons for this region, and pick one randomly */
+            List<Beacon> beacons = pushBeacons.get(region);
+
+            if(beacons.size() > 0) {
+
+                Random rnd = new Random();
+                int i = rnd.nextInt(beacons.size());
+
+                Beacon b = beacons.get(i);
+                beaconMajorMinors.add(b.getMajor() + "-" + b.getMinor());
+
+                JSONObject jsonParams = new JSONObject();
+
+                try {
+
+                    jsonParams.put("beaconId", new JSONArray(beaconMajorMinors));
+                    Log.d(TAG, "BEACON: " + jsonParams.toString());
+                    StringEntity entity = new StringEntity(jsonParams.toString());
+
+                    APIClient.setBaseUrl(endpoint);
+
+                    APIClient.put(context, "/users/me/pushBeacons", entity, accessToken, new JsonHttpResponseHandler() {
+                        @Override
+                        public void onSuccess(int statusCode, Header[] headers, JSONObject res) {
+                            // Do something with the response
+                            Log.d(TAG, "Request success: " + res);
+                        }
+
+                        @Override
+                        public void onSuccess(int statusCode, Header[] headers, JSONArray res) {
+                            // Do something with the response
+                            Log.d(TAG, "Request success: " + res.toString());
+                        }
+
+                        @Override
+                        public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
+                            Log.d(TAG, "Failed request: " + errorResponse);
+                        }
+
+                    });
+
+                } catch (Exception e) {}
+            }
         }
 
     }
@@ -177,12 +205,25 @@ public class BeaconNotificationsManager {
         this.endpoint = endpoint;
     }
 
-    public void addNotification(BeaconID beaconID, String enterMessage, String exitMessage) {
-//        Region region = beaconID.toBeaconRegion();
-        Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
-        enterMessages.put(region.getIdentifier(), enterMessage);
-        exitMessages.put(region.getIdentifier(), exitMessage);
-        regionsToMonitor.add(region);
+
+    public void setPaymentRegionsToMonitor(ArrayList<BeaconID> beaconIDs) {
+        paymentRegionsToMonitor = new ArrayList<>();
+
+        for(BeaconID beaconID : beaconIDs) {
+            Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
+            paymentRegionsToMonitor.add(region);
+            Log.d(TAG, "MONITORING REGION: " + region.toString());
+        }
+    }
+
+    public void setPushRegionsToMonitor(ArrayList<BeaconID> beaconIDs) {
+        pushRegionsToMonitor = new ArrayList<>();
+
+        for(BeaconID beaconID : beaconIDs) {
+            Region region = new Region(beaconID.getProximityUUID().toString(), beaconID.getProximityUUID(), beaconID.getMajor(), beaconID.getMinor());
+            pushRegionsToMonitor.add(region);
+            Log.d(TAG, "MONITORING REGION: " + region.toString());
+        }
     }
 
     public void startMonitoring() {
@@ -190,28 +231,16 @@ public class BeaconNotificationsManager {
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
             public void onServiceReady() {
-                for (Region region : regionsToMonitor) {
+                Log.d(TAG, "SERVICE READY, MONITORING: " + paymentRegionsToMonitor.toString());
+                for (Region region : paymentRegionsToMonitor) {
+                    beaconManager.startMonitoring(region);
+                }
+
+                for (Region region : pushRegionsToMonitor) {
                     beaconManager.startMonitoring(region);
                 }
             }
         });
     }
 
-    private void showNotification(String message) {
-        Intent resultIntent = new Intent(context, MainActivity.class);
-        PendingIntent resultPendingIntent = PendingIntent.getActivity(
-                context, 0, resultIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("Beacon Notifications")
-                .setContentText(message)
-                .setDefaults(NotificationCompat.DEFAULT_ALL)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(resultPendingIntent);
-
-        NotificationManager notificationManager =
-                (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.notify(notificationID++, builder.build());
-    }
 }
