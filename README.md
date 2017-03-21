@@ -1,11 +1,27 @@
 # cordova-beacon-background
-A simple Android service / plugin for Cordova that monitors BLE beacons in the background
+A simple Android service / plugin for Cordova that monitors BLE beacons in the background. Uses Estimote SDK under the hood.
 
 ### Installation
 
 ```
 cordova plugin add https://github.com/Topl/cordova-beacon-background.git
 ```
+
+### Disclaimer
+
+You will probably want/need to modify the `BeaconNotificationsManager.java` and `MyService.java` files for your own purposes. In particular,
+
+```
+private void updateServer(Region region) 
+```
+and
+```
+protected JSONObject getConfig
+protected void setConfig
+public void startMonitoring()
+```
+
+currently uses a very specific set of server requests when differently classified beacons are detected. The main purpose of this repository is solely as a starting point for your own project.
 
 ### Usage
 
